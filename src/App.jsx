@@ -1,7 +1,5 @@
 import { useState } from "react";
 
-// Paleta: fondo pizarra profundo, superficie de teclas en carbón cálido,
-// acento en ámbar eléctrico reservado solo para el operador activo y "=".
 const COLORS = {
   bg: "#14171A",
   surface: "#1D2124",
@@ -40,6 +38,133 @@ function compute(a, b, op) {
   }
 }
 
+function trimResult(num) {
+  if (!Number.isFinite(num)) return "Error";
+  let str = String(Math.round(num * 1e10) / 1e10);
+  if (str.replace("-", "").replace(".", "").length > 12) {
+    str = num.toExponential(6);
+  }
+  return str;
+}
+
+const Key = ({ label, onClick, variant = "default", span, isActive }) => {
+  const base = {
+    border: "none",
+    borderRadius: 14,
+    fontSize: label === "0" ? 22 : 20,
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontWeight: 500,
+    cursor: "pointer",
+    height: 62,
+    gridColumn: span ? "span 2" : undefined,
+    transition: "all 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: span ? "flex-start" : "center",
+    paddingLeft: span ? 24 : 0,
+    outline: "none",
+    position: "relative",
+    overflow: "hidden",
+  };
+
+  const variants = {
+    default: {
+      background: COLORS.key,
+      color: COLORS.textPrimary,
+      boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+    },
+    muted: {
+      background: COLORS.surface,
+      color: COLORS.textMuted,
+      boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+    },
+    operator: isActive
+      ? {
+          background: COLORS.amber,
+          color: "#1A1502",
+          boxShadow: `0 4px 12px rgba(232, 163, 61, 0.4)`,
+          transform: "scale(1.02)",
+        }
+      : {
+          background: COLORS.amberDim,
+          color: COLORS.amber,
+          boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+        },
+    equals: {
+      background: COLORS.amber,
+      color: "#1A1502",
+      fontWeight: 600,
+      boxShadow: "0 4px 12px rgba(232, 163, 61, 0.3)",
+    },
+  };
+
+  const handleMouseDown = (e) => {
+    e.currentTarget.style.transform = "scale(0.94)";
+    e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.3)";
+  };
+
+  const handleMouseUp = (e) => {
+    const finalTransform = variant === "operator" && isActive ? "scale(1.02)" : "scale(1)";
+    e.currentTarget.style.transform = finalTransform;
+    const finalShadow =
+      variant === "operator" && isActive
+        ? "0 4px 12px rgba(232, 163, 61, 0.4)"
+        : variants[variant].boxShadow;
+    e.currentTarget.style.boxShadow = finalShadow;
+  };
+
+  const handleMouseEnter = (e) => {
+    if (variant === "default") {
+      e.currentTarget.style.background = COLORS.keyHover;
+      e.currentTarget.style.transform = "scale(1.04)";
+      e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
+    }
+  };
+
+  const handleMouseLeave = (e) => {
+    if (variant === "default") {
+      e.currentTarget.style.background = COLORS.key;
+      e.currentTarget.style.transform = "scale(1)";
+      e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
+    }
+  };
+
+  const ariaLabel =
+    label === "÷"
+      ? "dividir"
+      : label === "×"
+        ? "multiplicar"
+        : label === "-"
+          ? "restar"
+          : label === "+"
+            ? "sumar"
+            : label === "="
+              ? "igual"
+              : label === "±"
+                ? "cambiar signo"
+                : label === "%"
+                  ? "porcentaje"
+                  : label === "AC"
+                    ? "borrar todo"
+                    : label === "."
+                      ? "punto decimal"
+                      : label;
+
+  return (
+    <button
+      onClick={onClick}
+      aria-label={ariaLabel}
+      style={{ ...base, ...variants[variant] }}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      onMouseEnter={handleMouseEnter}
+    >
+      {label}
+    </button>
+  );
+};
+
 export default function App() {
   const [display, setDisplay] = useState("0");
   const [stored, setStored] = useState(null);
@@ -77,15 +202,6 @@ export default function App() {
     }
     setOperator(op);
     setOverwrite(true);
-  };
-
-  const trimResult = (num) => {
-    if (!Number.isFinite(num)) return "Error";
-    let str = String(Math.round(num * 1e10) / 1e10);
-    if (str.replace("-", "").replace(".", "").length > 12) {
-      str = num.toExponential(6);
-    }
-    return str;
   };
 
   const equals = () => {
@@ -129,73 +245,42 @@ export default function App() {
     }
   };
 
-  const Key = ({ label, onClick, variant = "default", span }) => {
-    const base = {
-      border: "none",
-      borderRadius: 14,
-      fontSize: label === "0" ? 22 : 20,
-      fontFamily: "'IBM Plex Mono', monospace",
-      fontWeight: 500,
-      cursor: "pointer",
-      height: 62,
-      gridColumn: span ? "span 2" : undefined,
-      transition: "background-color 120ms ease, transform 80ms ease",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: span ? "flex-start" : "center",
-      paddingLeft: span ? 24 : 0,
-    };
-    const variants = {
-      default: { background: COLORS.key, color: COLORS.textPrimary },
-      muted: { background: COLORS.surface, color: COLORS.textMuted },
-      operator:
-        operator === label
-          ? { background: COLORS.amber, color: "#1A1502" }
-          : { background: COLORS.amberDim, color: COLORS.amber },
-      equals: { background: COLORS.amber, color: "#1A1502", fontWeight: 600 },
-    };
-    return (
-      <button
-        onClick={onClick}
-        style={{ ...base, ...variants[variant] }}
-        onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.96)")}
-        onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-        onMouseEnter={(e) => {
-          if (variant === "default") e.currentTarget.style.background = COLORS.keyHover;
-        }}
-        onMouseOut={(e) => {
-          if (variant === "default") e.currentTarget.style.background = COLORS.key;
-        }}
-      >
-        {label}
-      </button>
-    );
-  };
-
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "100svh",
         background: COLORS.bg,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 24,
+        padding: 16,
         fontFamily: "'IBM Plex Mono', monospace",
       }}
     >
       <div
         style={{
-          width: 340,
+          width: "100%",
+          maxWidth: 340,
           background: COLORS.surface,
           borderRadius: 28,
           padding: 20,
-          boxShadow: "0 30px 60px -20px rgba(0,0,0,0.6)",
+          boxShadow:
+            "0 25px 50px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)",
           border: `1px solid ${COLORS.divider}`,
+          animation: "fadeIn 400ms cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
-        {/* Pantalla */}
+        <style>{`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+
         <div
           style={{
             padding: "28px 16px 20px",
@@ -208,6 +293,7 @@ export default function App() {
           }}
         >
           <div
+            key={expression}
             style={{
               color: COLORS.textMuted,
               fontSize: 13,
@@ -217,6 +303,7 @@ export default function App() {
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               maxWidth: "100%",
+              animation: expression ? "slideDown 200ms ease-out" : "none",
             }}
           >
             {expression || "\u00A0"}
@@ -231,6 +318,7 @@ export default function App() {
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               maxWidth: "100%",
+              transition: "font-size 200ms cubic-bezier(0.4, 0, 0.2, 1), color 200ms ease",
             }}
           >
             {formatDisplay(display)}
@@ -239,7 +327,6 @@ export default function App() {
 
         <div style={{ height: 1, background: COLORS.divider, margin: "4px 0 16px" }} />
 
-        {/* Teclado */}
         <div
           style={{
             display: "grid",
@@ -250,22 +337,42 @@ export default function App() {
           <Key label="AC" onClick={clearAll} variant="muted" />
           <Key label="±" onClick={toggleSign} variant="muted" />
           <Key label="%" onClick={percent} variant="muted" />
-          <Key label="÷" onClick={() => chooseOperator("÷")} variant="operator" />
+          <Key
+            label="÷"
+            onClick={() => chooseOperator("÷")}
+            variant="operator"
+            isActive={operator === "÷"}
+          />
 
           <Key label="7" onClick={() => inputDigit("7")} />
           <Key label="8" onClick={() => inputDigit("8")} />
           <Key label="9" onClick={() => inputDigit("9")} />
-          <Key label="×" onClick={() => chooseOperator("×")} variant="operator" />
+          <Key
+            label="×"
+            onClick={() => chooseOperator("×")}
+            variant="operator"
+            isActive={operator === "×"}
+          />
 
           <Key label="4" onClick={() => inputDigit("4")} />
           <Key label="5" onClick={() => inputDigit("5")} />
           <Key label="6" onClick={() => inputDigit("6")} />
-          <Key label="-" onClick={() => chooseOperator("-")} variant="operator" />
+          <Key
+            label="-"
+            onClick={() => chooseOperator("-")}
+            variant="operator"
+            isActive={operator === "-"}
+          />
 
           <Key label="1" onClick={() => inputDigit("1")} />
           <Key label="2" onClick={() => inputDigit("2")} />
           <Key label="3" onClick={() => inputDigit("3")} />
-          <Key label="+" onClick={() => chooseOperator("+")} variant="operator" />
+          <Key
+            label="+"
+            onClick={() => chooseOperator("+")}
+            variant="operator"
+            isActive={operator === "+"}
+          />
 
           <Key label="0" onClick={() => inputDigit("0")} span />
           <Key label="." onClick={() => inputDigit(".")} />
@@ -281,6 +388,7 @@ export default function App() {
         >
           <button
             onClick={backspace}
+            aria-label="borrar último dígito"
             style={{
               background: "transparent",
               border: "none",
@@ -289,6 +397,17 @@ export default function App() {
               letterSpacing: 1,
               cursor: "pointer",
               fontFamily: "'IBM Plex Mono', monospace",
+              padding: "4px 8px",
+              borderRadius: 6,
+              transition: "all 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = COLORS.textPrimary;
+              e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = COLORS.textMuted;
+              e.currentTarget.style.background = "transparent";
             }}
           >
             ⌫ borrar
